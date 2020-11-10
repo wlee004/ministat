@@ -150,14 +150,50 @@ NewSet(void)
 static void
 AddPoint(struct dataset *ds, double a)
 {
+	double *temp;
 	if (ds->n >= ds->lpoints) {
+		printf("about to realloc.\n");
 		ds->lpoints *= 4;
-		ds->points = realloc(ds->points, ds->lpoints);
+		temp = realloc(ds->points, ds->lpoints);
+		if (temp == NULL) {
+			printf("Failed to realloc.\n");
+		} else {
+		   printf("Realloc success.\n");
+		  ds->points = temp;	
+		}
 	}
-	ds->points[ds->n++] = a;
+	printf("here.\n");
+	ds->n++;
+	printf("here2.\n");
+	ds->points[ds->n] = a;
+	printf("here3.\n");
 	ds->sy += a;
+	printf("here4.\n");
 	ds->syy += a * a;
+	printf("here5.\n");
 }
+
+// static void
+// AddPoint(struct dataset *ds, double a)
+// {
+// 	double *dp;
+
+// /*
+// 	If number of elements in the dataset is equal to "lpoints" 
+// 	  (total amount of points that will fit in points memory on heap)
+// 	  then we resize it to allow us to add 4x more.
+// */
+// 	if (ds->n >= ds->lpoints) {
+// 		dp = ds->points; // store a copy of the existing array of doubles
+// 		ds->lpoints *= 4; // increase the size by 4x
+// 		ds->points = calloc(sizeof *ds->points, ds->lpoints); // update array of doubles to zero-init bigger size on heap
+// 		memcpy(ds->points, dp, sizeof *dp * ds->n); // copy the temporarily saved existing double values into the newly calloced memory
+// 		free(dp);  // free the temp pointer to points
+// 	}
+// 	ds->points[ds->n++] = a; // add the new value to points array
+// 	ds->sy += a; // increment the total sum by the new value
+// 	ds->syy += a * a; // increment syy with the value squared? (I'm not sure what this is for but okay.)
+// }
 
 static double
 Min(struct dataset *ds)
