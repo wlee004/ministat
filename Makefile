@@ -4,7 +4,7 @@ OBJS= ministat.o
 
 PKGS = 
 
-CFLAGS  += -g -Wall -Werror
+CFLAGS  += -g -Wall -Werror -ggdb -O2 
 CPPFLAGS+= -I. -D_GNU_SOURCE
 LDFLAGS += -lm
 
