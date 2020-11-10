@@ -448,7 +448,8 @@ static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
 	FILE *f;
-	char buf[BUFSIZ], *p, *t;
+	//char buf[BUFSIZ], *p, *t;
+	char buf[BUFSIZ], *t;
 	struct dataset *s;
 	double d;
 	int line;
@@ -483,9 +484,10 @@ ReadSet(const char *n, int column, const char *delim)
 		if (t == NULL || *t == '#')
 			continue;
 
-		d = strtod(t, &p);
-		if (p != NULL && *p != '\0')
-			err(2, "Invalid data on line %d in %s\n", line, n);
+		//d = strtod(t, &p);
+		d = atof(t);
+		//if (p != NULL && *p != '\0')
+		//	err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
 			AddPoint(s, d);
 	}
@@ -559,7 +561,8 @@ main(int argc, char **argv)
 				usage("Column number should be positive.");
 			break;
 		case 'c':
-			a = strtod(optarg, &p);
+			//a = strtod(optarg, &p);
+			a = atof(optarg);
 			if (p != NULL && *p != '\0')
 				usage("Not a floating point number");
 			for (i = 0; i < NCONF; i++)
