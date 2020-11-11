@@ -150,18 +150,20 @@ NewSet(void)
 static void
 AddPoint(struct dataset *ds, double a)
 {
-	double *dp;
-
+	double *temp;
 	if (ds->n >= ds->lpoints) {
-		dp = ds->points;
 		ds->lpoints *= 4;
-		ds->points = calloc(sizeof *ds->points, ds->lpoints);
-		memcpy(ds->points, dp, sizeof *dp * ds->n);
-		free(dp);
+		temp = realloc(ds->points, (ds->lpoints * sizeof *ds->points));
+		if (temp == NULL) {
+			printf("Realloc failed in AddPoint. Exiting...\n");
+			exit(0);
+		} else {
+			ds->points = temp;
+		}
 	}
 	ds->points[ds->n++] = a;
 	ds->sy += a;
-	ds->syy += a * a;
+	ds->syy += a * a;	
 }
 
 static double
