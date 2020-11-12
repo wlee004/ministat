@@ -150,20 +150,18 @@ NewSet(void)
 static void
 AddPoint(struct dataset *ds, double a)
 {
-	double *temp;
+	double *dp;
+
 	if (ds->n >= ds->lpoints) {
+		dp = ds->points;
 		ds->lpoints *= 4;
-		temp = realloc(ds->points, (ds->lpoints * sizeof *ds->points));
-		if (temp == NULL) {
-			printf("Realloc failed in AddPoint. Exiting...\n");
-			exit(0);
-		} else {
-			ds->points = temp;
-		}
+		ds->points = calloc(sizeof *ds->points, ds->lpoints);
+		memcpy(ds->points, dp, sizeof *dp * ds->n);
+		free(dp);
 	}
 	ds->points[ds->n++] = a;
 	ds->sy += a;
-	ds->syy += a * a;	
+	ds->syy += a * a;
 }
 
 static double
@@ -450,8 +448,7 @@ static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
 	FILE *f;
-	//char buf[BUFSIZ], *p, *t;
-	char buf[BUFSIZ], *t;
+	char buf[BUFSIZ], *p, *t;
 	struct dataset *s;
 	double d;
 	int line;
@@ -486,10 +483,9 @@ ReadSet(const char *n, int column, const char *delim)
 		if (t == NULL || *t == '#')
 			continue;
 
-		//d = strtod(t, &p);
-		d = atof(t);
-		//if (p != NULL && *p != '\0')
-		//	err(2, "Invalid data on line %d in %s\n", line, n);
+		d = strtod(t, &p);
+		if (p != NULL && *p != '\0')
+			err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
 			AddPoint(s, d);
 	}
@@ -500,7 +496,6 @@ ReadSet(const char *n, int column, const char *delim)
 		exit (2);
 	}
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
-///////	qsort(
 	return (s);
 }
 
@@ -541,7 +536,6 @@ main(int argc, char **argv)
 	int flag_s = 0;
 	int flag_n = 0;
 	int flag_q = 0;
-	//int flag_v = 0;
 	int termwidth = 74;
 
 	if (isatty(STDOUT_FILENO)) {
@@ -555,8 +549,7 @@ main(int argc, char **argv)
 	}
 
 	ci = -1;
-	  while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
-	//while ((c = getopt(argc, argv, "C:c:d:snqw:v:")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -566,8 +559,7 @@ main(int argc, char **argv)
 				usage("Column number should be positive.");
 			break;
 		case 'c':
-			//a = strtod(optarg, &p);
-			a = atof(optarg);
+			a = strtod(optarg, &p);
 			if (p != NULL && *p != '\0')
 				usage("Not a floating point number");
 			for (i = 0; i < NCONF; i++)
@@ -597,11 +589,6 @@ main(int argc, char **argv)
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
 			break;
-		/*case 'v':
-			if (optopt != NULL)
-				usage("No option argument required.");
-			flag_v = 1;
-			break;*/
 		default:
 			usage("Unknown option");
 			break;
