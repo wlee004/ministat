@@ -5,7 +5,7 @@
  * can do whatever you want with this stuff. If we meet some day, and you think
  * this stuff is worth it, you can buy me a beer in return.   Poul-Henning Kamp
  * ----------------------------------------------------------------------------
- *-------------------testing..changes 2222
+ *
  */
 #include <sys/ioctl.h>
 
@@ -540,6 +540,7 @@ main(int argc, char **argv)
 	int flag_s = 0;
 	int flag_n = 0;
 	int flag_q = 0;
+	int flag_v = 0;
 	int termwidth = 74;
 
 	if (isatty(STDOUT_FILENO)) {
@@ -553,7 +554,8 @@ main(int argc, char **argv)
 	}
 
 	ci = -1;
-	while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
+	//while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:snqw:v:")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -593,6 +595,11 @@ main(int argc, char **argv)
 				usage("Invalid width, not a number.");
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
+			break;
+		case 'v':
+			if (optopt != NULL)
+				usage("No option argument required.");
+			flag_v = 1;
 			break;
 		default:
 			usage("Unknown option");
