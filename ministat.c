@@ -540,6 +540,7 @@ main(int argc, char **argv)
 	int flag_s = 0;
 	int flag_n = 0;
 	int flag_q = 0;
+	int flag_v = 0;
 	int termwidth = 74;
 
 	if (isatty(STDOUT_FILENO)) {
@@ -593,6 +594,11 @@ main(int argc, char **argv)
 				usage("Invalid width, not a number.");
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
+			break;
+		case 'v':
+			  if (optopt != NULL)
+               			 usage("No opt arg required.");
+			flag_v = 1;
 			break;
 		default:
 			usage("Unknown option");
