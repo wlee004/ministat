@@ -500,6 +500,7 @@ ReadSet(const char *n, int column, const char *delim)
 		exit (2);
 	}
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+///////	qsort(
 	return (s);
 }
 
@@ -540,7 +541,7 @@ main(int argc, char **argv)
 	int flag_s = 0;
 	int flag_n = 0;
 	int flag_q = 0;
-	int flag_v = 0;
+	//int flag_v = 0;
 	int termwidth = 74;
 
 	if (isatty(STDOUT_FILENO)) {
@@ -554,8 +555,8 @@ main(int argc, char **argv)
 	}
 
 	ci = -1;
-	//while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
-	while ((c = getopt(argc, argv, "C:c:d:snqw:v:")) != -1)
+	  while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
+	//while ((c = getopt(argc, argv, "C:c:d:snqw:v:")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -596,11 +597,11 @@ main(int argc, char **argv)
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
 			break;
-		case 'v':
+		/*case 'v':
 			if (optopt != NULL)
 				usage("No option argument required.");
 			flag_v = 1;
-			break;
+			break;*/
 		default:
 			usage("Unknown option");
 			break;

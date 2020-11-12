@@ -1,3 +1,8 @@
+#Team-G
+
+##Milestones
+-Use an_qsort to implement a final merge sort.
+
 # ministat
 A small tool to do the statistics legwork on benchmarks etc.
 
