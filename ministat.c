@@ -1,3 +1,4 @@
+
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
@@ -5,7 +6,7 @@
  * can do whatever you want with this stuff. If we meet some day, and you think
  * this stuff is worth it, you can buy me a beer in return.   Poul-Henning Kamp
  * ----------------------------------------------------------------------------
- *
+ *--------------Nov-12-2020----------
  */
 #include <sys/ioctl.h>
 
@@ -15,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <time.h>
 #include "queue.h"
 
 #define NSTUDENT 100
@@ -127,7 +128,8 @@ double student [NSTUDENT + 1][NCONF] = {
 
 #define	MAX_DS	8
 static char symbol[MAX_DS] = { ' ', 'x', '+', '*', '%', '#', '@', 'O' };
-
+static unsigned long long int ti[2];
+struct timespec start, stop;
 struct dataset {
 	char *name;
 	double	*points;
@@ -138,7 +140,7 @@ struct dataset {
 
 static struct dataset *
 NewSet(void)
-{
+{ 
 	struct dataset *ds;
 
 	ds = calloc(1, sizeof *ds);
@@ -150,18 +152,23 @@ NewSet(void)
 static void
 AddPoint(struct dataset *ds, double a)
 {
-	double *dp;
-
+	double *temp;
 	if (ds->n >= ds->lpoints) {
-		dp = ds->points;
 		ds->lpoints *= 4;
-		ds->points = calloc(sizeof *ds->points, ds->lpoints);
-		memcpy(ds->points, dp, sizeof *dp * ds->n);
-		free(dp);
+		clock_gettime(CLOCK_MONOTONIC, &start);
+		temp = realloc(ds->points, (ds->lpoints * sizeof *ds->points));
+		if (temp == NULL) {
+			printf("Realloc failed in AddPoint. Exiting...\n");
+			exit(0);
+		} else {
+			ds->points = temp;
+		}
 	}
+	clock_gettime(CLOCK_MONOTONIC, &stop);
+	ti[0] = 1000000000 * (stop.tv_sec - start.tv_sec) + stop.tv_nsec-start.tv_nsec;
 	ds->points[ds->n++] = a;
 	ds->sy += a;
-	ds->syy += a * a;
+	ds->syy += a * a;	
 }
 
 static double
@@ -204,6 +211,13 @@ Stddev(struct dataset *ds)
 {
 
 	return sqrt(Var(ds));
+}
+
+static void 
+TimePrint(void)
+{
+	printf("TiMing Performance 		AddPoint 	ReadSet		 	\n");
+	printf("Today:              %llu            %llu\n", ti[0], ti[1]);
 }
 
 static void
@@ -253,7 +267,7 @@ Relative(struct dataset *ds, struct dataset *rs, int confidx)
 }
 
 struct plot {
-	double		min;
+	double		Min;
 	double		max;
 	double		span;
 	int		width;
@@ -280,7 +294,7 @@ SetupPlot(int width, int separate, int num_datasets)
 	pl->bar = NULL;
 	pl->separate_bars = separate;
 	pl->num_datasets = num_datasets;
-	pl->min = 999e99;
+	pl->Min = 999e99;
 	pl->max = -999e99;
 }
 
@@ -290,13 +304,13 @@ AdjPlot(double a)
 	struct plot *pl;
 
 	pl = &plot;
-	if (a < pl->min)
-		pl->min = a;
+	if (a < pl->Min)
+		pl->Min = a;
 	if (a > pl->max)
 		pl->max = a;
-	pl->span = pl->max - pl->min;
+	pl->span = pl->max - pl->Min;
 	pl->dx = pl->span / (pl->width - 1.0);
-	pl->x0 = pl->min - .5 * pl->dx;
+	pl->x0 = pl->Min - .5 * pl->dx;
 }
 
 static void
@@ -444,11 +458,19 @@ dbl_cmp(const void *a, const void *b)
 		return (0);
 }
 
+#define AN_QSORT_SUFFIX doubles
+#define AN_QSORT_TYPE double
+#define AN_QSORT_CMP dbl_cmp
+
+#include "an_qsort.inc"
+
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
+	clock_gettime(CLOCK_MONOTONIC, &start);
 	FILE *f;
-	char buf[BUFSIZ], *p, *t;
+	//char buf[BUFSIZ], *p, *t;
+	char buf[BUFSIZ], *t;
 	struct dataset *s;
 	double d;
 	int line;
@@ -489,9 +511,10 @@ ReadSet(const char *n, int column, const char *delim)
 		}
 			
 
-		d = strtod(t, &p);
-		if (p != NULL && *p != '\0')
-			err(2, "Invalid data on line %d in %s\n", line, n);
+		//d = strtod(t, &p);
+		d = atof(t);
+		//if (p != NULL && *p != '\0')
+		//	err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
 			AddPoint(s, d);
 		free(ptr);	
@@ -502,7 +525,10 @@ ReadSet(const char *n, int column, const char *delim)
 		    "Dataset %s must contain at least 3 data points\n", n);
 		exit (2);
 	}
-	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+//	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	an_qsort_doubles(s->points, s->n);
+	clock_gettime(CLOCK_MONOTONIC, &stop);
+	ti[1] = 1000000000 * (stop.tv_sec - start.tv_sec) + stop.tv_nsec-start.tv_nsec;
 	return (s);
 }
 
@@ -513,7 +539,7 @@ usage(char const *whine)
 
 	fprintf(stderr, "%s\n", whine);
 	fprintf(stderr,
-	    "Usage: ministat [-C column] [-c confidence] [-d delimiter(s)] [-ns] [-w width] [file [file ...]]\n");
+	    "Usage: Ministat [-C column] [-c confidence] [-d delimiter(s)] [-ns] [-w width] [file [file ...]]\n");
 	fprintf(stderr, "\tconfidence = {");
 	for (i = 0; i < NCONF; i++) {
 		fprintf(stderr, "%s%g%%",
@@ -526,7 +552,7 @@ usage(char const *whine)
 	fprintf(stderr, "\t-n : print summary statistics only, no graph/test\n");
 	fprintf(stderr, "\t-q : print summary statistics and test only, no graph\n");
 	fprintf(stderr, "\t-s : print avg/median/stddev bars on separate lines\n");
-	fprintf(stderr, "\t-w : width of graph/test output (default 74 or terminal width)\n");
+	fprintf(stderr, "\t-w : width of graph/test output (default 74 or terMinal width)\n");
 	exit (2);
 }
 
@@ -557,7 +583,7 @@ main(int argc, char **argv)
 	}
 
 	ci = -1;
-	while ((c = getopt(argc, argv, "C:c:d:snqw:")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:snqw:v:")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -567,7 +593,8 @@ main(int argc, char **argv)
 				usage("Column number should be positive.");
 			break;
 		case 'c':
-			a = strtod(optarg, &p);
+			//a = strtod(optarg, &p);
+			a = atof(optarg);
 			if (p != NULL && *p != '\0')
 				usage("Not a floating point number");
 			for (i = 0; i < NCONF; i++)
@@ -598,8 +625,8 @@ main(int argc, char **argv)
 				usage("Unable to move beyond left margin.");
 			break;
 		case 'v':
-			  if (optopt != NULL)
-               			 usage("No opt arg required.");
+			if(*optarg != '\0')
+				usage("No opt arg required");
 			flag_v = 1;
 			break;
 		default:
@@ -633,12 +660,16 @@ main(int argc, char **argv)
 			PlotSet(ds[i], i + 1);
 		DumpPlot();
 	}
+
 	VitalsHead();
 	Vitals(ds[0], 1);
 	for (i = 1; i < nds; i++) {
 		Vitals(ds[i], i + 1);
 		if (!flag_n)
 			Relative(ds[i], ds[0], ci);
+	}
+	if (flag_v){
+		TimePrint();
 	}
 	exit(0);
 }
