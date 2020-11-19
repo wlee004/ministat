@@ -216,7 +216,7 @@ Stddev(struct dataset *ds)
 static void 
 TimePrint(void)
 {
-	printf("TiMing Performance 		AddPoint 	ReadSet		 	\n");
+	printf("Timing Performance 		AddPoint 	ReadSet		 	\n");
 	printf("Today:              %llu            %llu\n", ti[0], ti[1]);
 }
 
@@ -525,8 +525,10 @@ ReadSet(const char *n, int column, const char *delim)
 		    "Dataset %s must contain at least 3 data points\n", n);
 		exit (2);
 	}
+
 //	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	an_qsort_doubles(s->points, s->n);
+
 	clock_gettime(CLOCK_MONOTONIC, &stop);
 	ti[1] = 1000000000 * (stop.tv_sec - start.tv_sec) + stop.tv_nsec-start.tv_nsec;
 	return (s);
