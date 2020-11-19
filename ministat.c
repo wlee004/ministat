@@ -1,3 +1,4 @@
+
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
@@ -266,7 +267,7 @@ Relative(struct dataset *ds, struct dataset *rs, int confidx)
 }
 
 struct plot {
-	double		min;
+	double		Min;
 	double		max;
 	double		span;
 	int		width;
@@ -293,7 +294,7 @@ SetupPlot(int width, int separate, int num_datasets)
 	pl->bar = NULL;
 	pl->separate_bars = separate;
 	pl->num_datasets = num_datasets;
-	pl->min = 999e99;
+	pl->Min = 999e99;
 	pl->max = -999e99;
 }
 
@@ -303,13 +304,13 @@ AdjPlot(double a)
 	struct plot *pl;
 
 	pl = &plot;
-	if (a < pl->min)
-		pl->min = a;
+	if (a < pl->Min)
+		pl->Min = a;
 	if (a > pl->max)
 		pl->max = a;
-	pl->span = pl->max - pl->min;
+	pl->span = pl->max - pl->Min;
 	pl->dx = pl->span / (pl->width - 1.0);
-	pl->x0 = pl->min - .5 * pl->dx;
+	pl->x0 = pl->Min - .5 * pl->dx;
 }
 
 static void
@@ -457,6 +458,12 @@ dbl_cmp(const void *a, const void *b)
 		return (0);
 }
 
+#define AN_QSORT_SUFFIX doubles
+#define AN_QSORT_TYPE double
+#define AN_QSORT_CMP dbl_cmp
+
+#include "an_qsort.inc"
+
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim)
 {
@@ -518,7 +525,10 @@ ReadSet(const char *n, int column, const char *delim)
 		    "Dataset %s must contain at least 3 data points\n", n);
 		exit (2);
 	}
-	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+
+//	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	an_qsort_doubles(s->points, s->n);
+
 	clock_gettime(CLOCK_MONOTONIC, &stop);
 	ti[1] = 1000000000 * (stop.tv_sec - start.tv_sec) + stop.tv_nsec-start.tv_nsec;
 	return (s);
@@ -531,7 +541,7 @@ usage(char const *whine)
 
 	fprintf(stderr, "%s\n", whine);
 	fprintf(stderr,
-	    "Usage: ministat [-C column] [-c confidence] [-d delimiter(s)] [-ns] [-w width] [file [file ...]]\n");
+	    "Usage: Ministat [-C column] [-c confidence] [-d delimiter(s)] [-ns] [-w width] [file [file ...]]\n");
 	fprintf(stderr, "\tconfidence = {");
 	for (i = 0; i < NCONF; i++) {
 		fprintf(stderr, "%s%g%%",
@@ -544,7 +554,7 @@ usage(char const *whine)
 	fprintf(stderr, "\t-n : print summary statistics only, no graph/test\n");
 	fprintf(stderr, "\t-q : print summary statistics and test only, no graph\n");
 	fprintf(stderr, "\t-s : print avg/median/stddev bars on separate lines\n");
-	fprintf(stderr, "\t-w : width of graph/test output (default 74 or terminal width)\n");
+	fprintf(stderr, "\t-w : width of graph/test output (default 74 or terMinal width)\n");
 	exit (2);
 }
 
