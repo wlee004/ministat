@@ -136,7 +136,6 @@ struct dataset {
 	double sy, syy;
 	unsigned n;
 };
-int countedAddPoint = 0;
 
 static struct dataset *
 NewSet(void)
@@ -150,15 +149,9 @@ NewSet(void)
 }
 
 static void
-AddPoint(struct dataset *ds, double a, float flag_v)
+AddPoint(struct dataset *ds, double a)
 {
 	double *temp;
-	
-	// if (flag_v && countedAddPoint == 0) {
-	// 	printf("got here!!!");
-	// 	clock_gettime(CLOCK_MONOTONIC, &start);
-	// }
-	
 	if (ds->n >= ds->lpoints) {
 		ds->lpoints *= 4;
 		temp = realloc(ds->points, (ds->lpoints * sizeof *ds->points));
@@ -172,12 +165,6 @@ AddPoint(struct dataset *ds, double a, float flag_v)
 	ds->points[ds->n++] = a;
 	ds->sy += a;
 	ds->syy += a * a;
-	
-	// if (flag_v && countedAddPoint == 0) {
-	//   clock_gettime(CLOCK_MONOTONIC, &stop);
-	//   ti[0] = stop.tv_sec - start.tv_sec;	
-	//   countedAddPoint = 1;	
-	// }
 }
 
 static double
@@ -522,7 +509,7 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 		//if (p != NULL && *p != '\0')
 		//	err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
-			AddPoint(s, d, flag_v);
+			AddPoint(s, d);
 		free(ptr);	
 	}
 	fclose(f);
