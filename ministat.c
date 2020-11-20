@@ -1,3 +1,4 @@
+
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
@@ -8,7 +9,6 @@
  *--------------Nov-12-2020----------
  */
 #include <sys/ioctl.h>
-
 #include <err.h>
 #include <math.h>
 #include <stdio.h>
@@ -16,6 +16,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "queue.h"
 
 #define NSTUDENT 100
@@ -263,7 +266,7 @@ Relative(struct dataset *ds, struct dataset *rs, int confidx)
 }
 
 struct plot {
-	double		min;
+	double		Min;
 	double		max;
 	double		span;
 	int		width;
@@ -290,7 +293,7 @@ SetupPlot(int width, int separate, int num_datasets)
 	pl->bar = NULL;
 	pl->separate_bars = separate;
 	pl->num_datasets = num_datasets;
-	pl->min = 999e99;
+	pl->Min = 999e99;
 	pl->max = -999e99;
 }
 
@@ -300,13 +303,13 @@ AdjPlot(double a)
 	struct plot *pl;
 
 	pl = &plot;
-	if (a < pl->min)
-		pl->min = a;
+	if (a < pl->Min)
+		pl->Min = a;
 	if (a > pl->max)
 		pl->max = a;
-	pl->span = pl->max - pl->min;
+	pl->span = pl->max - pl->Min;
 	pl->dx = pl->span / (pl->width - 1.0);
-	pl->x0 = pl->min - .5 * pl->dx;
+	pl->x0 = pl->Min - .5 * pl->dx;
 }
 
 static void
@@ -454,77 +457,100 @@ dbl_cmp(const void *a, const void *b)
 		return (0);
 }
 
+#define AN_QSORT_SUFFIX doubles
+#define AN_QSORT_TYPE double
+#define AN_QSORT_CMP dbl_cmp
+
+#include "an_qsort.inc"
+
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim, float flag_v)
 {
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &start);
 	}
-	
-	FILE *f;
-	//char buf[BUFSIZ], *p, *t;
-	char buf[BUFSIZ], *t;
+	char buf[BUFSIZ], truncat[BUFSIZ], *t, *cursor;
+
 	struct dataset *s;
 	double d;
-	int line;
-	int i;
+	int f, bytes_read_sofar, r;
+	int overflow = 0;
+    int prev_overflow = 0; 
+	size_t num;
 
 	if (n == NULL) {
-		f = stdin;
+		f = STDIN_FILENO;
 		n = "<stdin>";
 	} else if (!strcmp(n, "-")) {
-		f = stdin;
+		f = STDIN_FILENO;
 		n = "<stdin>";
 	} else {
-		f = fopen(n, "r");
+		f = open(n, O_RDWR);
 	}
-	if (f == NULL)
+	if (f == -1)
 		err(1, "Cannot open %s", n);
 	s = NewSet();
 	s->name = strdup(n);
-	line = 0;
-	while (fgets(buf, sizeof buf, f) != NULL) {
-		line++;
 
-		i = strlen(buf);
-		if (buf[i-1] == '\n')
-			buf[i-1] = '\0';
-	
-		char *ptr = strdup(buf); // copy string in buffer to pointer
-		char *ptr1 = ptr;        // copy of ptr because strsep modifies it
-		for (i = 1, t = strsep(&ptr1, delim);
-		     t != NULL && *t != '#';
-		     i++, t = strsep(&ptr1, delim)) {
-			if (i == column)
-				break;
-		}
-		if (t == NULL || *t == '#') {
-			free(ptr);
-			continue;
-		}
-			
+	while ((r = read(f, buf, sizeof buf - 1)) > 0) {
+        
+		buf[r] = '\0';
+        bytes_read_sofar = 0; 
+        cursor = strdup(buf); 
 
-		//d = strtod(t, &p);
-		d = atof(t);
-		//if (p != NULL && *p != '\0')
-		//	err(2, "Invalid data on line %d in %s\n", line, n);
-		if (*buf != '\0')
+		// check for truncation 
+		if(prev_overflow == 1) {
+			num = strcspn(cursor, "\n \t"); 
+			bytes_read_sofar += num;
+			t = strsep(&cursor, "\n \t");
+			strcat(truncat, t);
+			d = atof(truncat);
 			AddPoint(s, d);
-		free(ptr);	
+			prev_overflow = 0;
+		}
+
+		// check for overflow 
+		if(buf[r-1] != '\n' && buf[r-1] != '\0' && buf[r-1] != ' ' && buf[r-1] != '\t'){
+			overflow = 1; 
+		}
+
+		for(;;){
+			if (cursor != NULL) {
+				num = strcspn(cursor, "\n \t"); 
+				bytes_read_sofar += num + 1;
+			}
+                                        
+			t = strsep(&cursor, "\n \t");
+			if(t == NULL){
+				break;
+			} else if(*t != '\0'){
+				if((overflow == 1) && (bytes_read_sofar >= r)){
+					strcpy(truncat,t);
+					overflow = 0; 
+					prev_overflow = 1; 
+				}
+				else{
+					d = atof(t);
+					AddPoint(s, d);
+				}
+			}
+		} 
+	    memset(buf, 0, BUFSIZ);
 	}
-	fclose(f);
+
+	close(f);
+	//AddPoint(s, d);
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
 		exit (2);
 	}
-	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
-	
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &stop);
 	  ti[1] = stop.tv_sec - start.tv_sec;
 	}
-
+//	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	an_qsort_doubles(s->points, s->n);
 	return (s);
 }
 
@@ -535,7 +561,7 @@ usage(char const *whine)
 
 	fprintf(stderr, "%s\n", whine);
 	fprintf(stderr,
-	    "Usage: ministat [-C column] [-c confidence] [-d delimiter(s)] [-ns] [-w width] [file [file ...]]\n");
+	    "Usage: Ministat [-C column] [-c confidence] [-d delimiter(s)] [-ns] [-w width] [file [file ...]]\n");
 	fprintf(stderr, "\tconfidence = {");
 	for (i = 0; i < NCONF; i++) {
 		fprintf(stderr, "%s%g%%",
@@ -548,7 +574,7 @@ usage(char const *whine)
 	fprintf(stderr, "\t-n : print summary statistics only, no graph/test\n");
 	fprintf(stderr, "\t-q : print summary statistics and test only, no graph\n");
 	fprintf(stderr, "\t-s : print avg/median/stddev bars on separate lines\n");
-	fprintf(stderr, "\t-w : width of graph/test output (default 74 or terminal width)\n");
+	fprintf(stderr, "\t-w : width of graph/test output (default 74 or terMinal width)\n");
 	exit (2);
 }
 
