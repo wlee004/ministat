@@ -175,12 +175,6 @@ AddPoint(struct dataset *ds, double a, float flag_v)
 	ds->points[ds->n++] = a;
 	ds->sy += a;
 	ds->syy += a * a;
-	
-	// if (flag_v && countedAddPoint == 0) {
-	//   clock_gettime(CLOCK_MONOTONIC, &stop);
-	//   ti[0] = stop.tv_sec - start.tv_sec;	
-	//   countedAddPoint = 1;	
-	// }
 }
 
 static double
@@ -483,9 +477,8 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &start);
 	}
-	
-	char buf[BUFSIZ], *t;
 	char buf[BUFSIZ], truncat[BUFSIZ], *t, *cursor;
+
 	struct dataset *s;
 	double d;
 	int f, bytes_read_sofar, r;
@@ -561,12 +554,13 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 		    "Dataset %s must contain at least 3 data points\n", n);
 		exit (2);
 	}
-	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
-	
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &stop);
 	  ti[1] = stop.tv_sec - start.tv_sec;
 	}
+
+//	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
+	an_qsort_doubles(s->points, s->n);
 
 	return (s);
 }
