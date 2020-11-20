@@ -136,6 +136,7 @@ struct dataset {
 	double sy, syy;
 	unsigned n;
 };
+int countedAddPoint = 0;
 
 static struct dataset *
 NewSet(void)
@@ -149,12 +150,17 @@ NewSet(void)
 }
 
 static void
-AddPoint(struct dataset *ds, double a)
+AddPoint(struct dataset *ds, double a, float flag_v)
 {
 	double *temp;
+	
+	// if (flag_v && countedAddPoint == 0) {
+	// 	printf("got here!!!");
+	// 	clock_gettime(CLOCK_MONOTONIC, &start);
+	// }
+	
 	if (ds->n >= ds->lpoints) {
 		ds->lpoints *= 4;
-		clock_gettime(CLOCK_MONOTONIC, &start);
 		temp = realloc(ds->points, (ds->lpoints * sizeof *ds->points));
 		if (temp == NULL) {
 			printf("Realloc failed in AddPoint. Exiting...\n");
@@ -163,11 +169,15 @@ AddPoint(struct dataset *ds, double a)
 			ds->points = temp;
 		}
 	}
-	clock_gettime(CLOCK_MONOTONIC, &stop);
-	ti[0] = 1000000000 * (stop.tv_sec - start.tv_sec) + stop.tv_nsec-start.tv_nsec;
 	ds->points[ds->n++] = a;
 	ds->sy += a;
-	ds->syy += a * a;	
+	ds->syy += a * a;
+	
+	// if (flag_v && countedAddPoint == 0) {
+	//   clock_gettime(CLOCK_MONOTONIC, &stop);
+	//   ti[0] = stop.tv_sec - start.tv_sec;	
+	//   countedAddPoint = 1;	
+	// }
 }
 
 static double
@@ -458,9 +468,12 @@ dbl_cmp(const void *a, const void *b)
 }
 
 static struct dataset *
-ReadSet(const char *n, int column, const char *delim)
+ReadSet(const char *n, int column, const char *delim, float flag_v)
 {
-	clock_gettime(CLOCK_MONOTONIC, &start);
+	if (flag_v) {
+	  clock_gettime(CLOCK_MONOTONIC, &start);
+	}
+	
 	FILE *f;
 	//char buf[BUFSIZ], *p, *t;
 	char buf[BUFSIZ], *t;
@@ -509,7 +522,7 @@ ReadSet(const char *n, int column, const char *delim)
 		//if (p != NULL && *p != '\0')
 		//	err(2, "Invalid data on line %d in %s\n", line, n);
 		if (*buf != '\0')
-			AddPoint(s, d);
+			AddPoint(s, d, flag_v);
 		free(ptr);	
 	}
 	fclose(f);
@@ -519,8 +532,12 @@ ReadSet(const char *n, int column, const char *delim)
 		exit (2);
 	}
 	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
-	clock_gettime(CLOCK_MONOTONIC, &stop);
-	ti[1] = 1000000000 * (stop.tv_sec - start.tv_sec) + stop.tv_nsec-start.tv_nsec;
+	
+	if (flag_v) {
+	  clock_gettime(CLOCK_MONOTONIC, &stop);
+	  ti[1] = stop.tv_sec - start.tv_sec;
+	}
+
 	return (s);
 }
 
@@ -575,7 +592,7 @@ main(int argc, char **argv)
 	}
 
 	ci = -1;
-	while ((c = getopt(argc, argv, "C:c:d:snqw:v:")) != -1)
+	while ((c = getopt(argc, argv, "C:c:d:svnqw:")) != -1)
 		switch (c) {
 		case 'C':
 			column = strtol(optarg, &p, 10);
@@ -606,6 +623,11 @@ main(int argc, char **argv)
 		case 'q':
 			flag_q = 1;
 			break;
+		case 'v':
+			// if(*optarg != '\0')
+			// 	usage("No opt arg required");
+			flag_v = 1;
+			break;
 		case 's':
 			flag_s = 1;
 			break;
@@ -615,11 +637,6 @@ main(int argc, char **argv)
 				usage("Invalid width, not a number.");
 			if (termwidth < 0)
 				usage("Unable to move beyond left margin.");
-			break;
-		case 'v':
-			if(*optarg != '\0')
-				usage("No opt arg required");
-			flag_v = 1;
 			break;
 		default:
 			usage("Unknown option");
@@ -631,14 +648,14 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		ds[0] = ReadSet("-", column, delim);
+		ds[0] = ReadSet("-", column, delim, flag_v);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
 		for (i = 0; i < nds; i++)
-			ds[i] = ReadSet(argv[i], column, delim);
+			ds[i] = ReadSet(argv[i], column, delim, flag_v);
 	}
 
 	for (i = 0; i < nds; i++) 
@@ -660,6 +677,7 @@ main(int argc, char **argv)
 		if (!flag_n)
 			Relative(ds[i], ds[0], ci);
 	}
+	
 	if (flag_v){
 		TimePrint();
 	}
