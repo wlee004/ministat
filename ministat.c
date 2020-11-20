@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include "queue.h"
 
 #define NSTUDENT 100
@@ -140,6 +141,7 @@ struct dataset {
 	unsigned n;
 };
 int countedAddPoint = 0;
+
 
 static struct dataset *
 NewSet(void)
@@ -465,9 +467,15 @@ dbl_cmp(const void *a, const void *b)
 
 #include "an_qsort.inc"
 
-static struct dataset *
-ReadSet(const char *n, int column, const char *delim, float flag_v)
+void *
+ReadSet(struct arg_struct *arguments)
 {
+	struct arg_struct args = arguments;
+	const char *n = args->n;
+	int column = args->column;
+	const char *delim = args->delim;
+	float flag_v = args->flag_v;
+	struct dataset *ds = args->ds;
 
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &start);
@@ -557,7 +565,10 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 //	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	an_qsort_doubles(s->points, s->n);
 
-	return (s);
+	
+	// return (s);
+	ds = s;
+	return 0;
 }
 
 static void
@@ -584,6 +595,17 @@ usage(char const *whine)
 	exit (2);
 }
 
+struct arg_struct
+{
+   const char *n;
+   int column;
+   const char *delim;
+   float flag_v;
+   struct dataset *ds;
+};
+
+struct arg_struct *my_args;
+
 int
 main(int argc, char **argv)
 {
@@ -599,6 +621,9 @@ main(int argc, char **argv)
 	int flag_q = 0;
 	int flag_v = 0;
 	int termwidth = 74;
+	pthread_t pt;
+	
+	my_args = malloc(sizeof(my_args) * 1);
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
@@ -665,14 +690,24 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		ds[0] = ReadSet("-", column, delim, flag_v);
-		nds = 1;
+		// ds[0] = ReadSet("-", column, delim, flag_v);
+		// nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
-		for (i = 0; i < nds; i++)
-			ds[i] = ReadSet(argv[i], column, delim, flag_v);
+		
+		
+		my_args->n= argv[i];
+		my_args->column=column;
+		my_args->delim=delim; 
+		my_args->flag_v=flag_v;
+		
+		for (i = 0; i < nds; i++) {
+			 pthread_create(&pt, NULL, &ReadSet, my_args);
+			//  ds[i] = ReadSet(argv[i], column, delim, flag_v);
+		}
+			
 	}
 
 	for (i = 0; i < nds; i++) 
