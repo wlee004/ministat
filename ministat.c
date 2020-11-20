@@ -153,14 +153,9 @@ NewSet(void)
 }
 
 static void
-AddPoint(struct dataset *ds, double a, float flag_v)
+AddPoint(struct dataset *ds, double a)
 {
 	double *temp;
-	
-	// if (flag_v && countedAddPoint == 0) {
-	// 	printf("got here!!!");
-	// 	clock_gettime(CLOCK_MONOTONIC, &start);
-	// }
 	
 	if (ds->n >= ds->lpoints) {
 		ds->lpoints *= 4;
@@ -648,8 +643,6 @@ main(int argc, char **argv)
 			flag_q = 1;
 			break;
 		case 'v':
-			// if(*optarg != '\0')
-			// 	usage("No opt arg required");
 			flag_v = 1;
 			break;
 		case 's':
