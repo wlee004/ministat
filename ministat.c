@@ -139,6 +139,7 @@ struct dataset {
 	double sy, syy;
 	unsigned n;
 };
+int countedAddPoint = 0;
 
 static struct dataset *
 NewSet(void)
@@ -152,9 +153,15 @@ NewSet(void)
 }
 
 static void
-AddPoint(struct dataset *ds, double a)
+AddPoint(struct dataset *ds, double a, float flag_v)
 {
 	double *temp;
+	
+	// if (flag_v && countedAddPoint == 0) {
+	// 	printf("got here!!!");
+	// 	clock_gettime(CLOCK_MONOTONIC, &start);
+	// }
+	
 	if (ds->n >= ds->lpoints) {
 		ds->lpoints *= 4;
 		temp = realloc(ds->points, (ds->lpoints * sizeof *ds->points));
@@ -466,6 +473,7 @@ dbl_cmp(const void *a, const void *b)
 static struct dataset *
 ReadSet(const char *n, int column, const char *delim, float flag_v)
 {
+
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &start);
 	}
@@ -514,6 +522,7 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 			overflow = 1; 
 		}
 
+
 		for(;;){
 			if (cursor != NULL) {
 				num = strcspn(cursor, "\n \t"); 
@@ -549,8 +558,10 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 	  clock_gettime(CLOCK_MONOTONIC, &stop);
 	  ti[1] = stop.tv_sec - start.tv_sec;
 	}
+
 //	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	an_qsort_doubles(s->points, s->n);
+
 	return (s);
 }
 
