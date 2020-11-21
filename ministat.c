@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include "queue.h"
 
 #define NSTUDENT 100
@@ -140,6 +141,12 @@ struct dataset {
 	unsigned n;
 };
 int countedAddPoint = 0;
+
+struct input{
+	const char *n;
+	int column;
+	float flag_v;
+};
 
 static struct dataset *
 NewSet(void)
@@ -465,9 +472,14 @@ dbl_cmp(const void *a, const void *b)
 
 #include "an_qsort.inc"
 
-static struct dataset *
-ReadSet(const char *n, int column, const char *delim, float flag_v)
+void *
+// old parameters: const char *n, int column, const char *delim, float flag_v
+ReadSet(void * param)
 {
+	struct input * inputs = (struct input *)param;
+	const char * n = inputs -> n;
+	//int column = inputs -> column; 
+	float flag_v = inputs -> flag_v; 
 
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &start);
@@ -554,10 +566,11 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 	  ti[1] = stop.tv_sec - start.tv_sec;
 	}
 
-//	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	an_qsort_doubles(s->points, s->n);
 
-	return (s);
+	//return s;
+	
+	return (void *)s; 
 }
 
 static void
@@ -590,7 +603,7 @@ main(int argc, char **argv)
 	struct dataset *ds[7];
 	int nds;
 	double a;
-	const char *delim = " \t";
+	//const char *delim = " \t";
 	char *p;
 	int c, i, ci;
 	int column = 1;
@@ -599,6 +612,9 @@ main(int argc, char **argv)
 	int flag_q = 0;
 	int flag_v = 0;
 	int termwidth = 74;
+	pthread_t thread; 
+	void * result = malloc(sizeof (void *)); 
+	struct input * inputs = malloc(sizeof (* inputs));
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
@@ -634,7 +650,7 @@ main(int argc, char **argv)
 		case 'd':
 			if (*optarg == '\0')
 				usage("Can't use empty delimiter string");
-			delim = optarg;
+			//delim = optarg;
 			break;
 		case 'n':
 			flag_n = 1;
@@ -665,14 +681,26 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		ds[0] = ReadSet("-", column, delim, flag_v);
+		inputs -> n = "-";
+		inputs -> column = column; 
+		inputs -> flag_v = flag_v;
+		pthread_create(&thread, NULL, ReadSet, (void*)&inputs);
+		pthread_join(thread, result);
+		ds[0] = (struct dataset *)result;
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
-		for (i = 0; i < nds; i++)
-			ds[i] = ReadSet(argv[i], column, delim, flag_v);
+		inputs -> n = "-";
+		inputs -> column = column; 
+		inputs -> flag_v = flag_v;
+		for (i = 0; i < nds; i++){
+			pthread_create(&thread, NULL, ReadSet, (void*)&inputs);
+			pthread_join(thread, result);
+			ds[i] = (struct dataset *)result;
+		}
+			
 	}
 
 	for (i = 0; i < nds; i++) 
