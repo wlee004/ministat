@@ -143,9 +143,9 @@ struct dataset {
 int countedAddPoint = 0;
 
 struct input{
-	const char *n;
-	int column;
+	char * file;
 	float flag_v;
+	struct dataset * s; 
 };
 
 static struct dataset *
@@ -474,12 +474,11 @@ dbl_cmp(const void *a, const void *b)
 
 void *
 // old parameters: const char *n, int column, const char *delim, float flag_v
-ReadSet(const char * n, float flag_v)
+ReadSet(void * argument)
 {
-	//struct input * inputs = (struct input *)param;
-	//const char * n = inputs -> n;
-	//int column = inputs -> column; 
-	//float flag_v = inputs -> flag_v; 
+	struct input * inputs = (struct input *)argument;
+	char * n = inputs -> file;
+	float flag_v = inputs -> flag_v; 
 
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &start);
@@ -555,7 +554,6 @@ ReadSet(const char * n, float flag_v)
 	}
 
 	close(f);
-	//AddPoint(s, d);
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
@@ -568,9 +566,10 @@ ReadSet(const char * n, float flag_v)
 
 	an_qsort_doubles(s->points, s->n);
 
-	return s;
-	
-	//return (void *)s; 
+	//return s;
+
+	inputs->s = s;
+	return NULL; 
 }
 
 static void
@@ -612,10 +611,7 @@ main(int argc, char **argv)
 	int flag_q = 0;
 	int flag_v = 0;
 	int termwidth = 74;
-	//pthread_t thread; 
-	//void * result = malloc(sizeof (void *)); 
-	//struct input * inputs, input1;
-	//inputs = &input1;
+	pthread_t thread; 
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
@@ -682,31 +678,30 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		//inputs -> n = "-";
-		//inputs -> column = column; 
-		//inputs -> flag_v = flag_v;
-		//pthread_create(&thread, NULL, ReadSet, (void*)&inputs);
-		//pthread_join(thread, result);
-		//ds[0] = (struct dataset *)result;
-		ds[0] = ReadSet("-", flag_v);
+		struct input inputs;
+		inputs.file = "-";
+		inputs.flag_v = flag_v;
+		pthread_create(&thread, NULL, &ReadSet, (void*)&inputs);
+		pthread_join(thread, NULL);
+		ds[0] = inputs.s;
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
-		//inputs -> n = "-";
-		//inputs -> column = column; 
-		//inputs -> flag_v = flag_v;
+		struct input inputs;
+		inputs.flag_v = flag_v;
 		for (i = 0; i < nds; i++){
-			//pthread_create(&thread, NULL, ReadSet, (void*)&inputs);
-			//pthread_join(thread, result);
-			//ds[i] = (struct dataset *)result;
-			ds[i] = ReadSet("-", flag_v);
+			printf("ARGV: %s\n", argv[i]);
+			inputs.file = argv[i];
+			pthread_create(&thread, NULL, &ReadSet, (void*)&inputs);
+			
 		}
-		
+		for(i = 0; i < nds; i++){
+			pthread_join(thread, NULL);
+			ds[i] = inputs.s;
+		}	
 	}
-	//free(inputs);
-	//free(result);
 
 	for (i = 0; i < nds; i++) 
 		printf("%c %s\n", symbol[i+1], ds[i]->name);
