@@ -24,6 +24,8 @@
 
 #define NSTUDENT 100
 #define NCONF 6
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; 
 double const studentpct[] = { 80, 90, 95, 98, 99, 99.5 };
 double student [NSTUDENT + 1][NCONF] = {
 /* inf */	{	1.282,	1.645,	1.960,	2.326,	2.576,	3.090  },
@@ -566,8 +568,6 @@ ReadSet(void * argument)
 
 	an_qsort_doubles(s->points, s->n);
 
-	//return s;
-
 	inputs->s = s;
 	return NULL; 
 }
@@ -611,7 +611,7 @@ main(int argc, char **argv)
 	int flag_q = 0;
 	int flag_v = 0;
 	int termwidth = 74;
-	pthread_t thread; 
+	//pthread_t thread[argc - 1]; 
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
@@ -677,29 +677,29 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	pthread_t thread[argc]; 
 	if (argc == 0) {
 		struct input inputs;
 		inputs.file = "-";
 		inputs.flag_v = flag_v;
-		pthread_create(&thread, NULL, &ReadSet, (void*)&inputs);
-		pthread_join(thread, NULL);
+		pthread_create(&thread[0], NULL, &ReadSet, (void*)&inputs);
+		pthread_join(thread[0], NULL);
 		ds[0] = inputs.s;
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
-		struct input inputs;
-		inputs.flag_v = flag_v;
+		struct input inputs[argc];
 		for (i = 0; i < nds; i++){
+			inputs[i].flag_v = flag_v;
 			printf("ARGV: %s\n", argv[i]);
-			inputs.file = argv[i];
-			pthread_create(&thread, NULL, &ReadSet, (void*)&inputs);
-			
+			inputs[i].file = argv[i];
+			pthread_create(&thread[i], NULL, &ReadSet, (void*)&inputs[i]);
 		}
 		for(i = 0; i < nds; i++){
-			pthread_join(thread, NULL);
-			ds[i] = inputs.s;
+			pthread_join(thread[i], NULL); 
+			ds[i] = inputs[i].s; 
 		}	
 	}
 
