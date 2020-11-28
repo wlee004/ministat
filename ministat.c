@@ -474,12 +474,12 @@ dbl_cmp(const void *a, const void *b)
 
 void *
 // old parameters: const char *n, int column, const char *delim, float flag_v
-ReadSet(void * param)
+ReadSet(const char * n, float flag_v)
 {
-	struct input * inputs = (struct input *)param;
-	const char * n = inputs -> n;
+	//struct input * inputs = (struct input *)param;
+	//const char * n = inputs -> n;
 	//int column = inputs -> column; 
-	float flag_v = inputs -> flag_v; 
+	//float flag_v = inputs -> flag_v; 
 
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &start);
@@ -568,9 +568,9 @@ ReadSet(void * param)
 
 	an_qsort_doubles(s->points, s->n);
 
-	//return s;
+	return s;
 	
-	return (void *)s; 
+	//return (void *)s; 
 }
 
 static void
@@ -612,9 +612,10 @@ main(int argc, char **argv)
 	int flag_q = 0;
 	int flag_v = 0;
 	int termwidth = 74;
-	pthread_t thread; 
-	void * result = malloc(sizeof (void *)); 
-	struct input * inputs = malloc(sizeof (* inputs));
+	//pthread_t thread; 
+	//void * result = malloc(sizeof (void *)); 
+	//struct input * inputs, input1;
+	//inputs = &input1;
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
@@ -681,27 +682,31 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		inputs -> n = "-";
-		inputs -> column = column; 
-		inputs -> flag_v = flag_v;
-		pthread_create(&thread, NULL, ReadSet, (void*)&inputs);
-		pthread_join(thread, result);
-		ds[0] = (struct dataset *)result;
+		//inputs -> n = "-";
+		//inputs -> column = column; 
+		//inputs -> flag_v = flag_v;
+		//pthread_create(&thread, NULL, ReadSet, (void*)&inputs);
+		//pthread_join(thread, result);
+		//ds[0] = (struct dataset *)result;
+		ds[0] = ReadSet("-", flag_v);
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
-		inputs -> n = "-";
-		inputs -> column = column; 
-		inputs -> flag_v = flag_v;
+		//inputs -> n = "-";
+		//inputs -> column = column; 
+		//inputs -> flag_v = flag_v;
 		for (i = 0; i < nds; i++){
-			pthread_create(&thread, NULL, ReadSet, (void*)&inputs);
-			pthread_join(thread, result);
-			ds[i] = (struct dataset *)result;
+			//pthread_create(&thread, NULL, ReadSet, (void*)&inputs);
+			//pthread_join(thread, result);
+			//ds[i] = (struct dataset *)result;
+			ds[i] = ReadSet("-", flag_v);
 		}
-			
+		
 	}
+	//free(inputs);
+	//free(result);
 
 	for (i = 0; i < nds; i++) 
 		printf("%c %s\n", symbol[i+1], ds[i]->name);
