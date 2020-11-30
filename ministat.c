@@ -19,10 +19,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include "queue.h"
 
 #define NSTUDENT 100
 #define NCONF 6
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; 
 double const studentpct[] = { 80, 90, 95, 98, 99, 99.5 };
 double student [NSTUDENT + 1][NCONF] = {
 /* inf */	{	1.282,	1.645,	1.960,	2.326,	2.576,	3.090  },
@@ -140,6 +143,12 @@ struct dataset {
 	unsigned n;
 };
 int countedAddPoint = 0;
+
+struct input{
+	char * file;
+	float flag_v;
+	struct dataset * s; 
+};
 
 static struct dataset *
 NewSet(void)
@@ -465,9 +474,13 @@ dbl_cmp(const void *a, const void *b)
 
 #include "an_qsort.inc"
 
-static struct dataset *
-ReadSet(const char *n, int column, const char *delim, float flag_v)
+void *
+// old parameters: const char *n, int column, const char *delim, float flag_v
+ReadSet(void * argument)
 {
+	struct input * inputs = (struct input *)argument;
+	char * n = inputs -> file;
+	float flag_v = inputs -> flag_v; 
 
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &start);
@@ -480,6 +493,7 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 	int overflow = 0;
     int prev_overflow = 0; 
 	size_t num;
+	char *p;
 
 	if (n == NULL) {
 		f = STDIN_FILENO;
@@ -507,7 +521,7 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 			bytes_read_sofar += num;
 			t = strsep(&cursor, "\n \t");
 			strcat(truncat, t);
-			d = atof(truncat);
+			d = strtod(truncat, &p);
 			AddPoint(s, d);
 			prev_overflow = 0;
 		}
@@ -534,7 +548,8 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 					prev_overflow = 1; 
 				}
 				else{
-					d = atof(t);
+					d = strtod(t, &p);
+					
 					AddPoint(s, d);
 				}
 			}
@@ -543,7 +558,6 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 	}
 
 	close(f);
-	//AddPoint(s, d);
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
@@ -554,10 +568,10 @@ ReadSet(const char *n, int column, const char *delim, float flag_v)
 	  ti[1] = stop.tv_sec - start.tv_sec;
 	}
 
-//	qsort(s->points, s->n, sizeof *s->points, dbl_cmp);
 	an_qsort_doubles(s->points, s->n);
 
-	return (s);
+	inputs->s = s;
+	return NULL; 
 }
 
 static void
@@ -590,7 +604,7 @@ main(int argc, char **argv)
 	struct dataset *ds[7];
 	int nds;
 	double a;
-	const char *delim = " \t";
+	//const char *delim = " \t";
 	char *p;
 	int c, i, ci;
 	int column = 1;
@@ -599,6 +613,7 @@ main(int argc, char **argv)
 	int flag_q = 0;
 	int flag_v = 0;
 	int termwidth = 74;
+	//pthread_t thread[argc - 1]; 
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
@@ -621,8 +636,7 @@ main(int argc, char **argv)
 				usage("Column number should be positive.");
 			break;
 		case 'c':
-			//a = strtod(optarg, &p);
-			a = atof(optarg);
+			a = strtod(optarg, &p);
 			if (p != NULL && *p != '\0')
 				usage("Not a floating point number");
 			for (i = 0; i < NCONF; i++)
@@ -634,7 +648,7 @@ main(int argc, char **argv)
 		case 'd':
 			if (*optarg == '\0')
 				usage("Can't use empty delimiter string");
-			delim = optarg;
+			//delim = optarg;
 			break;
 		case 'n':
 			flag_n = 1;
@@ -664,15 +678,30 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	pthread_t thread[argc]; 
 	if (argc == 0) {
-		ds[0] = ReadSet("-", column, delim, flag_v);
+		struct input inputs;
+		inputs.file = "-";
+		inputs.flag_v = flag_v;
+		pthread_create(&thread[0], NULL, &ReadSet, (void*)&inputs);
+		pthread_join(thread[0], NULL);
+		ds[0] = inputs.s;
 		nds = 1;
 	} else {
 		if (argc > (MAX_DS - 1))
 			usage("Too many datasets.");
 		nds = argc;
-		for (i = 0; i < nds; i++)
-			ds[i] = ReadSet(argv[i], column, delim, flag_v);
+		struct input inputs[argc];
+		for (i = 0; i < nds; i++){
+			inputs[i].flag_v = flag_v;
+			printf("ARGV: %s\n", argv[i]);
+			inputs[i].file = argv[i];
+			pthread_create(&thread[i], NULL, &ReadSet, (void*)&inputs[i]);
+		}
+		for(i = 0; i < nds; i++){
+			pthread_join(thread[i], NULL); 
+			ds[i] = inputs[i].s; 
+		}	
 	}
 
 	for (i = 0; i < nds; i++) 
