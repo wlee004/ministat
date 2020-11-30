@@ -493,6 +493,7 @@ ReadSet(void * argument)
 	int overflow = 0;
     int prev_overflow = 0; 
 	size_t num;
+	char *p;
 
 	if (n == NULL) {
 		f = STDIN_FILENO;
@@ -520,7 +521,7 @@ ReadSet(void * argument)
 			bytes_read_sofar += num;
 			t = strsep(&cursor, "\n \t");
 			strcat(truncat, t);
-			d = atof(truncat);
+			d = strtod(truncat, &p);
 			AddPoint(s, d);
 			prev_overflow = 0;
 		}
@@ -547,7 +548,8 @@ ReadSet(void * argument)
 					prev_overflow = 1; 
 				}
 				else{
-					d = atof(t);
+					d = strtod(t, &p);
+					
 					AddPoint(s, d);
 				}
 			}
@@ -634,8 +636,7 @@ main(int argc, char **argv)
 				usage("Column number should be positive.");
 			break;
 		case 'c':
-			//a = strtod(optarg, &p);
-			a = atof(optarg);
+			a = strtod(optarg, &p);
 			if (p != NULL && *p != '\0')
 				usage("Not a floating point number");
 			for (i = 0; i < NCONF; i++)
