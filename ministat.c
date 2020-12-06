@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include "queue.h"
+#include "dtoa-fast/dtoa/strtod-lite.c"
 
 #define NSTUDENT 100
 #define NCONF 6
@@ -521,7 +522,8 @@ ReadSet(void * argument)
 			bytes_read_sofar += num;
 			t = strsep(&cursor, "\n \t");
 			strcat(truncat, t);
-			d = strtod(truncat, &p);
+			//d = strtod(truncat, &p);
+			d = strtod_fast(truncat, &p);
 			AddPoint(s, d);
 			prev_overflow = 0;
 		}
@@ -548,7 +550,8 @@ ReadSet(void * argument)
 					prev_overflow = 1; 
 				}
 				else{
-					d = strtod(t, &p);
+					//d = strtod(t, &p);
+					d = strtod_fast(t, &p);
 					
 					AddPoint(s, d);
 				}
@@ -636,7 +639,8 @@ main(int argc, char **argv)
 				usage("Column number should be positive.");
 			break;
 		case 'c':
-			a = strtod(optarg, &p);
+			//a = strtod(optarg, &p);
+			a = strtod_fast(optarg, &p);
 			if (p != NULL && *p != '\0')
 				usage("Not a floating point number");
 			for (i = 0; i < NCONF; i++)
