@@ -1,6 +1,6 @@
 BIN = ministat 
-SRCS= ministat.c
-OBJS= ministat.o
+SRCS= ministat.c mergesort.c
+OBJS= ministat.o mergesort.o
 
 PKGS = 
 
