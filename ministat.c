@@ -144,7 +144,7 @@ struct dataset {
 	unsigned n;
 };
 int countedAddPoint = 0;
-int multithreaded_mergsesort(double *a_arr, unsigned int n);
+int multithreaded_mergsesort(double *a_arr, unsigned int n, double * b_result);
 
 struct input{
 	char * file;
@@ -573,7 +573,14 @@ ReadSet(void * argument)
 	}
 
 	// an_qsort_doubles(s->points, s->n);
-	multithreaded_mergsesort(s->points, s->n);
+	double *sort_result = malloc(sizeof(double) * s->n);
+	if (sort_result == NULL) {
+		fprintf(stderr,
+		    "Could not allocate sort result.\n");
+		exit (1);
+	}
+	multithreaded_mergsesort(s->points, s->n, sort_result);
+	s->points = sort_result;
 
 	inputs->s = s;
 	return NULL; 

@@ -104,12 +104,12 @@ merge_sort_thread_fn(void *arg)
 }
 
 // Driver Code
-double *
-multithreaded_mergsesort(double *a_arr, unsigned int n)
+int
+multithreaded_mergsesort(double *a_arr, unsigned int n, double * b_result)
 {
     struct task *task;
 
-    int MAX = 10;
+    int MAX = 100;
     int THREAD_MAX = 4;
 
     global_a = malloc(sizeof(double) * n);
@@ -142,13 +142,13 @@ multithreaded_mergsesort(double *a_arr, unsigned int n)
     for (int i = 0; i < THREAD_MAX; i++)
         pthread_join(threads[i], NULL);
 
-// show the array values for each thread
-//     for (int i = 0; i < THREAD_MAX; i++) {
-//         task = &tasklist[i];
-//         printf("SUB %d:", task->task_no);
-//         for (int j = task->task_low; j <= task->task_high; ++j)
-//         printf(" %d\n", a[j]);
-//     }
+        // show the array values for each thread
+        //     for (int i = 0; i < THREAD_MAX; i++) {
+        //         task = &tasklist[i];
+        //         printf("SUB %d:", task->task_no);
+        //         for (int j = task->task_low; j <= task->task_high; ++j)
+        //         printf(" %d\n", a[j]);
+        //     }
 
     // merging the final 4 parts
     struct task *taskm = &tasklist[0];
@@ -157,41 +157,38 @@ multithreaded_mergsesort(double *a_arr, unsigned int n)
         merge(taskm->task_low, task->task_low - 1, task->task_high);
     }
 
-// displaying sorted array
-    printf("\n\nSorted array:");
-    for (int i = 0; i < MAX; i++) {
-        printf(" %f\n", global_a[i]); 
-    }
+        // displaying sorted array
+        //     printf("\n\nSorted array:");
+        //     for (int i = 0; i < MAX; i++) {
+        //         printf(" %f\n", global_a[i]); 
+        //     }
     
     // Update b with return result
-//     for (int i = 0; i < n; i++) {
-//         b[i] = global_a[i];
-//     }
-    
-//     free(global_a);
-//     return 0;
-  return global_a;
+    for (int i = 0; i < n; i++) {
+        b_result[i] = global_a[i];
+    }
+
+        return 0;
 }
 
 // Uncomment main to run only this file to test it.
 // Compile: gcc -o mergesort mergesort.c -lpthread
 
-int
-main(int argc, char **argv)
-{
-        double a_arr[10] = {8075,44,3795,6193,6276,126,10,1346,92543,1772};
-        unsigned int n = 10;
-        double *b_result; //  = malloc(sizeof(double) * n);
+// int
+// main(int argc, char **argv)
+// {
+//         double a_arr[10] = {8075,44,3795,6193,6276,126,10,1346,92543,1772};
+//         unsigned int n = 10;
+//         double *b_result = malloc(sizeof(double) * n);
         
-        for (int i = 0; i < n; i++) {
-            printf("before: %f\n", a_arr[i]);
-        }
+//         for (int i = 0; i < n; i++) {
+//             printf("before: %f\n", a_arr[i]);
+//         }
         
-        b_result = multithreaded_mergsesort(a_arr, n);
+//         multithreaded_mergsesort(a_arr, n, b_result);
         
-        for (int i = 0; i < n; i++) {
-            printf("after: %f\n", b_result[i]);
-        //     printf("after: %f\n", b_result[i]);
-        }
-        return 0;
-}
+//         for (int i = 0; i < n; i++) {
+//             printf("after: %f\n", b_result[i]);
+//         }
+//         return 0;
+// }
