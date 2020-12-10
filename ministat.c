@@ -146,11 +146,47 @@ struct dataset {
 int countedAddPoint = 0;
 int multithreaded_mergsesort(double *a_arr, unsigned int n, double * b_result);
 
+//input for ReadSet Thread 
 struct input{
 	char * file;
 	float flag_v;
 	struct dataset * s; 
 };
+
+struct node{
+	double data; 
+	struct node * next;
+};
+
+//input for read loop thread 
+struct read_arg{
+	char * file;
+	int seek_start; 
+	int bytes_to_read; 
+	struct node * head; 
+};
+
+struct node * createNode(){
+	struct node * temp; 
+	temp = (struct node *)malloc(sizeof (struct node));
+	temp -> next = NULL; 
+	return temp;
+}
+
+struct node * insertFrontNode(struct node * head, double d){
+	struct node * n1 = createNode(); 
+	n1 -> data = d; 
+	if(head -> next == NULL){ // empty link list 
+		head -> next = n1; 
+	}
+	else{
+		struct node * temp;
+		temp = head -> next; 
+		head -> next = n1; 
+		n1 -> next = temp; 
+	}
+	return head;
+}
 
 static struct dataset *
 NewSet(void)
@@ -476,26 +512,24 @@ DumpPlot(void)
 
 // #include "an_qsort.inc"
 
-void *
-// old parameters: const char *n, int column, const char *delim, float flag_v
-ReadSet(void * argument)
+void * 
+read_loop(void * argument)
 {
-	struct input * inputs = (struct input *)argument;
-	char * n = inputs -> file;
-	float flag_v = inputs -> flag_v; 
+	struct read_arg * args = (struct read_arg *) argument; 
+	char * n = args -> file; 
+	int seek_start = args -> seek_start;
+	int bytes_to_read = args -> bytes_to_read; 
+	
 
-	if (flag_v) {
-	  clock_gettime(CLOCK_MONOTONIC, &start);
-	}
 	char buf[BUFSIZ], truncat[BUFSIZ], *t, *cursor;
-
-	struct dataset *s;
 	double d;
 	int f, bytes_read_sofar, r;
 	int overflow = 0;
     int prev_overflow = 0; 
 	size_t num;
 	char *p;
+	int read_size = BUFSIZ;
+	int total_bytes_read = 0;
 
 	if (n == NULL) {
 		f = STDIN_FILENO;
@@ -508,12 +542,22 @@ ReadSet(void * argument)
 	}
 	if (f == -1)
 		err(1, "Cannot open %s", n);
-	s = NewSet();
-	s->name = strdup(n);
+	
+	// move to appropriate section
+	lseek(f, seek_start, SEEK_SET);
 
-	while ((r = read(f, buf, sizeof buf - 1)) > 0) {
-        
-		buf[r] = '\0';
+	//create link list to store doubles
+	struct node * head = createNode();
+
+	while (total_bytes_read < bytes_to_read) {	
+		//checking read buffer size
+        if(read_size > (bytes_to_read - total_bytes_read)){
+			read_size = (bytes_to_read - total_bytes_read) + 1;
+		}
+
+		r = read(f, buf, read_size - 1);
+		total_bytes_read += r; 
+		buf[read_size] = '\0';
         bytes_read_sofar = 0; 
         cursor = strdup(buf); 
 
@@ -523,9 +567,9 @@ ReadSet(void * argument)
 			bytes_read_sofar += num;
 			t = strsep(&cursor, "\n \t");
 			strcat(truncat, t);
-			//d = strtod(truncat, &p);
 			d = strtod_fast(truncat, &p);
-			AddPoint(s, d);
+			head = insertFrontNode(head, d);
+			//AddPoint(s, d);
 			prev_overflow = 0;
 		}
 
@@ -533,7 +577,6 @@ ReadSet(void * argument)
 		if(buf[r-1] != '\n' && buf[r-1] != '\0' && buf[r-1] != ' ' && buf[r-1] != '\t'){
 			overflow = 1; 
 		}
-
 
 		for(;;){
 			if (cursor != NULL) {
@@ -551,17 +594,118 @@ ReadSet(void * argument)
 					prev_overflow = 1; 
 				}
 				else{
-					//d = strtod(t, &p);
 					d = strtod_fast(t, &p);
-					
-					AddPoint(s, d);
+					head = insertFrontNode(head, d);
+					//AddPoint(s, d);
 				}
 			}
 		} 
-	    memset(buf, 0, BUFSIZ);
+	    memset(buf, 0, read_size);
+	}
+	close(f);
+
+	//return link list 
+	args -> head = head;
+	
+	return NULL; 
+}
+
+void *
+// old parameters: const char *n, int column, const char *delim, float flag_v
+ReadSet(void * argument)
+{
+	struct input * inputs = (struct input *)argument;
+	char * n = inputs -> file;
+	float flag_v = inputs -> flag_v; 
+	struct dataset *s;
+	double half_size;
+
+	s = NewSet();
+	s->name = strdup(n);
+
+	if (flag_v) {
+	  clock_gettime(CLOCK_MONOTONIC, &start);
 	}
 
+	// determine how much bytes each thread reads from a file 
+	struct stat buffer;
+    double size;
+    int status, f, r;
+    int thread1_readsize, thread2_readsize;
+	char buf[BUFSIZ]; 
+	int extra_read = 0;
+
+	// return the size of file being read in bytes
+    status = stat(n, &buffer);
+		if(status == 0)
+			size = buffer.st_size;
+		else{
+			size = 0;
+		}
+
+	// split bytes to read by n threads 
+	half_size = size / 2;
+	thread1_readsize = floor(half_size);
+	thread2_readsize = ceil(half_size);
+
+	if (n == NULL) {
+		f = STDIN_FILENO;
+		n = "<stdin>";
+	} else if (!strcmp(n, "-")) {
+		f = STDIN_FILENO;
+		n = "<stdin>";
+	} else {
+		f = open(n, O_RDWR);
+	}
+	if (f == -1)
+		err(1, "Cannot open %s", n);
+
+	lseek(f, thread1_readsize, SEEK_SET);
+
+	// detect truncation from splitting the file
+	r = read(f, buf, 1); // check next byte
+	while(buf[0] != '\n' && buf[0] != '\0' && buf[0] != ' ' && buf[0] != '\t'){
+		r = read(f, buf, 1); // read 1 byte at a time
+		extra_read += r;  
+	}
+	
+	memset(buf, 0, BUFSIZ);
+	thread1_readsize += extra_read;
+	thread2_readsize = size - thread1_readsize;  
 	close(f);
+
+	//multithread read: creates 2 thread per file 
+	pthread_t thread[2]; 
+	struct read_arg args[2];
+	for(int i = 0; i < 2; i++){
+		if(i == 0){
+			args[i].seek_start = 0;
+			args[i].bytes_to_read = thread1_readsize;
+		}
+		else{
+			args[i].seek_start = thread1_readsize;
+			args[i].bytes_to_read = thread2_readsize;
+		}
+		args[i].file = n;
+		pthread_create(&thread[i], NULL, &read_loop, (void *)&args[i]);
+	}
+	for(int i = 0; i < 2; i++){
+		pthread_join(thread[i], NULL);
+	}
+
+	// return linklist form threads
+	args[0].head = args[0].head -> next; 
+	while(args[0].head){
+		AddPoint(s, args[0].head -> data);
+		args[0].head = args[0].head -> next; 
+	}
+
+	args[1].head = args[1].head -> next; 
+	while(args[1].head){
+		AddPoint(s, args[1].head -> data);
+		args[1].head = args[1].head -> next; 
+	}
+
 	if (s->n < 3) {
 		fprintf(stderr,
 		    "Dataset %s must contain at least 3 data points\n", n);
