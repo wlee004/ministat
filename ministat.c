@@ -456,25 +456,25 @@ DumpPlot(void)
 	putchar('\n');
 }
 
-// static int
-// dbl_cmp(const void *a, const void *b)
-// {
-// 	const double *aa = a;
-// 	const double *bb = b;
+static int
+dbl_cmp(const void *a, const void *b)
+{
+ 	const double *aa = a;
+ 	const double *bb = b;
 
-// 	if (*aa < *bb)
-// 		return (-1);
-// 	else if (*aa > *bb)
-// 		return (1);
-// 	else
-// 		return (0);
-// }
+ 	if (*aa < *bb)
+ 		return (-1);
+ 	else if (*aa > *bb)
+ 		return (1);
+ 	else
+ 		return (0);
+}
 
-// #define AN_QSORT_SUFFIX doubles
-// #define AN_QSORT_TYPE double
-// #define AN_QSORT_CMP dbl_cmp
+#define AN_QSORT_SUFFIX doubles
+#define AN_QSORT_TYPE double
+#define AN_QSORT_CMP dbl_cmp
 
-// #include "an_qsort.inc"
+#include "an_qsort.inc"
 
 void *
 // old parameters: const char *n, int column, const char *delim, float flag_v
@@ -571,8 +571,9 @@ ReadSet(void * argument)
 	  clock_gettime(CLOCK_MONOTONIC, &stop);
 	  ti[1] = stop.tv_sec - start.tv_sec;
 	}
-
-	// an_qsort_doubles(s->points, s->n);
+	
+	an_qsort_doubles(s->points, s->n);
+	/*
 	double *sort_result = malloc(sizeof(double) * s->n);
 	if (sort_result == NULL) {
 		fprintf(stderr,
@@ -581,7 +582,7 @@ ReadSet(void * argument)
 	}
 	multithreaded_mergsesort(s->points, s->n, sort_result);
 	s->points = sort_result;
-
+	*/
 	inputs->s = s;
 	return NULL; 
 }
