@@ -163,30 +163,8 @@ struct read_arg{
 	char * file;
 	int seek_start; 
 	int bytes_to_read; 
-	struct node * head; 
+	struct dataset * s; 
 };
-
-struct node * createNode(){
-	struct node * temp; 
-	temp = (struct node *)malloc(sizeof (struct node));
-	temp -> next = NULL; 
-	return temp;
-}
-
-struct node * insertFrontNode(struct node * head, double d){
-	struct node * n1 = createNode(); 
-	n1 -> data = d; 
-	if(head -> next == NULL){ // empty link list 
-		head -> next = n1; 
-	}
-	else{
-		struct node * temp;
-		temp = head -> next; 
-		head -> next = n1; 
-		n1 -> next = temp; 
-	}
-	return head;
-}
 
 static struct dataset *
 NewSet(void)
@@ -519,7 +497,8 @@ read_loop(void * argument)
 	char * n = args -> file; 
 	int seek_start = args -> seek_start;
 	int bytes_to_read = args -> bytes_to_read; 
-	
+	struct dataset * s = args -> s;
+	s = NewSet();
 
 	char buf[BUFSIZ], truncat[BUFSIZ], *t, *cursor;
 	double d;
@@ -546,9 +525,6 @@ read_loop(void * argument)
 	// move to appropriate section
 	lseek(f, seek_start, SEEK_SET);
 
-	//create link list to store doubles
-	struct node * head = createNode();
-
 	while (total_bytes_read < bytes_to_read) {	
 		//checking read buffer size
         if(read_size > (bytes_to_read - total_bytes_read)){
@@ -568,8 +544,7 @@ read_loop(void * argument)
 			t = strsep(&cursor, "\n \t");
 			strcat(truncat, t);
 			d = strtod_fast(truncat, &p);
-			head = insertFrontNode(head, d);
-			//AddPoint(s, d);
+			AddPoint(s, d);
 			prev_overflow = 0;
 		}
 
@@ -595,8 +570,7 @@ read_loop(void * argument)
 				}
 				else{
 					d = strtod_fast(t, &p);
-					head = insertFrontNode(head, d);
-					//AddPoint(s, d);
+					AddPoint(s, d);
 				}
 			}
 		} 
@@ -605,7 +579,7 @@ read_loop(void * argument)
 	close(f);
 
 	//return link list 
-	args -> head = head;
+	args -> s = s;
 	
 	return NULL; 
 }
@@ -693,18 +667,7 @@ ReadSet(void * argument)
 		pthread_join(thread[i], NULL);
 	}
 
-	// return linklist form threads
-	args[0].head = args[0].head -> next; 
-	while(args[0].head){
-		AddPoint(s, args[0].head -> data);
-		args[0].head = args[0].head -> next; 
-	}
-
-	args[1].head = args[1].head -> next; 
-	while(args[1].head){
-		AddPoint(s, args[1].head -> data);
-		args[1].head = args[1].head -> next; 
-	}
+	s = args[0].s;
 
 	if (s->n < 3) {
 		fprintf(stderr,
@@ -768,8 +731,7 @@ main(int argc, char **argv)
 	int flag_n = 0;
 	int flag_q = 0;
 	int flag_v = 0;
-	int termwidth = 74;
-	//pthread_t thread[argc - 1]; 
+	int termwidth = 74; 
 
 	if (isatty(STDOUT_FILENO)) {
 		struct winsize wsz;
@@ -851,7 +813,6 @@ main(int argc, char **argv)
 		struct input inputs[argc];
 		for (i = 0; i < nds; i++){
 			inputs[i].flag_v = flag_v;
-			printf("ARGV: %s\n", argv[i]);
 			inputs[i].file = argv[i];
 			pthread_create(&thread[i], NULL, &ReadSet, (void*)&inputs[i]);
 		}
