@@ -197,6 +197,17 @@ AddPoint(struct dataset *ds, double a)
 	ds->syy += a * a;
 }
 
+static void 
+Append(struct dataset *s1, struct dataset *s2)
+{
+	s1->points = realloc(s1->points, sizeof s1->points + (s2->lpoints * sizeof s2->points));
+	memcpy(s1->points + s1->n, s2->points , s2->n * sizeof s2->points);
+	s1->lpoints += s2->lpoints;
+	s1->sy += s2->sy;
+	s1->syy += s2->syy;
+	s1->n += s2->n;
+}
+
 static double
 Min(struct dataset *ds)
 {
@@ -470,25 +481,25 @@ DumpPlot(void)
 	putchar('\n');
 }
 
-// static int
-// dbl_cmp(const void *a, const void *b)
-// {
-// 	const double *aa = a;
-// 	const double *bb = b;
+static int
+dbl_cmp(const void *a, const void *b)
+{
+	const double *aa = a;
+	const double *bb = b;
 
-// 	if (*aa < *bb)
-// 		return (-1);
-// 	else if (*aa > *bb)
-// 		return (1);
-// 	else
-// 		return (0);
-// }
+ 	if (*aa < *bb)
+ 		return (-1);
+ 	else if (*aa > *bb)
+ 		return (1);
+ 	else
+ 		return (0);
+}
 
-// #define AN_QSORT_SUFFIX doubles
-// #define AN_QSORT_TYPE double
-// #define AN_QSORT_CMP dbl_cmp
+#define AN_QSORT_SUFFIX doubles
+#define AN_QSORT_TYPE double
+#define AN_QSORT_CMP dbl_cmp
 
-// #include "an_qsort.inc"
+#include "an_qsort.inc"
 
 void * 
 read_loop(void * argument)
@@ -499,6 +510,7 @@ read_loop(void * argument)
 	int bytes_to_read = args -> bytes_to_read; 
 	struct dataset * s = args -> s;
 	s = NewSet();
+	s->name = strdup(n);
 
 	char buf[BUFSIZ], truncat[BUFSIZ], *t, *cursor;
 	double d;
@@ -507,7 +519,7 @@ read_loop(void * argument)
     int prev_overflow = 0; 
 	size_t num;
 	char *p;
-	int read_size = BUFSIZ;
+	int read_size = 8000;
 	int total_bytes_read = 0;
 
 	if (n == NULL) {
@@ -595,7 +607,7 @@ ReadSet(void * argument)
 	double half_size;
 
 	s = NewSet();
-	s->name = strdup(n);
+	//s->name = strdup(n);
 
 	if (flag_v) {
 	  clock_gettime(CLOCK_MONOTONIC, &start);
@@ -640,20 +652,21 @@ ReadSet(void * argument)
 	r = read(f, buf, 1); // check next byte
 	while(buf[0] != '\n' && buf[0] != '\0' && buf[0] != ' ' && buf[0] != '\t'){
 		r = read(f, buf, 1); // read 1 byte at a time
-		extra_read += r;  
+		extra_read += r;
 	}
 	
 	memset(buf, 0, BUFSIZ);
-	thread1_readsize += extra_read;
+	thread1_readsize += extra_read + 1;
 	thread2_readsize = size - thread1_readsize;  
 	close(f);
 
 	//multithread read: creates 2 thread per file 
-	pthread_t thread[2]; 
-	struct read_arg args[2];
-	for(int i = 0; i < 2; i++){
+	size_t THREAD_READ = 2;
+	pthread_t thread[THREAD_READ]; 
+	struct read_arg args[THREAD_READ];
+	for(int i = 0; i < THREAD_READ; i++){
 		if(i == 0){
-			args[i].seek_start = 0;
+			args[i].seek_start = 0; // 0 -> thread1_readsize - 1
 			args[i].bytes_to_read = thread1_readsize;
 		}
 		else{
@@ -663,11 +676,13 @@ ReadSet(void * argument)
 		args[i].file = n;
 		pthread_create(&thread[i], NULL, &read_loop, (void *)&args[i]);
 	}
-	for(int i = 0; i < 2; i++){
+	for(int i = 0; i < THREAD_READ; i++){
 		pthread_join(thread[i], NULL);
 	}
 
 	s = args[0].s;
+	Append(s, args[1].s);
+	//s = args[0].s;
 
 	if (s->n < 3) {
 		fprintf(stderr,
@@ -679,7 +694,8 @@ ReadSet(void * argument)
 	  ti[1] = stop.tv_sec - start.tv_sec;
 	}
 
-	// an_qsort_doubles(s->points, s->n);
+	an_qsort_doubles(s->points, s->n);
+	/*
 	double *sort_result = malloc(sizeof(double) * s->n);
 	if (sort_result == NULL) {
 		fprintf(stderr,
@@ -688,6 +704,7 @@ ReadSet(void * argument)
 	}
 	multithreaded_mergsesort(s->points, s->n, sort_result);
 	s->points = sort_result;
+	*/
 
 	inputs->s = s;
 	return NULL; 
