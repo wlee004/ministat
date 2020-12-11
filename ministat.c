@@ -254,7 +254,7 @@ static void
 TimePrint(void)
 {
 	printf("Timing Performance 		AddPoint 	ReadSet		 	\n");
-	printf("Today:              %llu            %llu\n", ti[0], ti[1]);
+	printf("Today:             		 %llu s            %llu s\n", ti[0], ti[1]);
 }
 
 static void
