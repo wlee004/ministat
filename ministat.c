@@ -666,7 +666,7 @@ ReadSet(void * argument)
 	struct read_arg args[THREAD_READ];
 	for(int i = 0; i < THREAD_READ; i++){
 		if(i == 0){
-			args[i].seek_start = 0; // 0 -> thread1_readsize - 1
+			args[i].seek_start = 0;
 			args[i].bytes_to_read = thread1_readsize;
 		}
 		else{

@@ -115,7 +115,7 @@ multithreaded_mergsesort(double *a_arr, unsigned int n, double * b_result)
     struct task *task;
 
     int MAX = n;
-    int THREAD_MAX = 4;
+    int THREAD_MAX = 6;
     
     for (int i = 0; i < MAX; i++)
         b_result[i] = a_arr[i];
