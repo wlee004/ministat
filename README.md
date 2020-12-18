@@ -1,64 +1,39 @@
-#Team-G
+## Senior Design II
+ 	Team G
+ 	William Lee, Sarah Edkins, Sagun Pandey, Tejnoor Singh
+ 	Git Repository Link: https://github.com/wlee004/ministat
 
-##Milestones
--Use an_qsort to implement a final merge sort.
+## Optimization of ministat
+### Goal:
+	The main objective of this project is to optimize ministat to take advantage of modern CPU features and compiler optimizations.
 
-# ministat
-A small tool to do the statistics legwork on benchmarks etc.
+### - Original ministat Perf Report
 
-Written by Poul-Henning Kamp, lured into a dark Linux alley and clubbed over the head and hauled away to Github by yours truly.
+### - Original ministat Flame Graph
 
-## Build & Install
+### - Optimized ministat Perf Report
 
-There should be no dependencies besides the standard libraries and a functional tool-chain.
+### - Optimized ministat Flame Graph
 
-	$ cd ministat/
-	$ make
-	$ make PREFIX=/usr install
-	install -m 0755 ministat  /usr/bin/ministat
+### Strategies for optimization:
+	We did the following to optimize our version of ministat.
+	
+### 1) Implemented Micro-optimizations
 
-## Usage
-The FreeBSD man page is very relevant, pursue it [here](http://www.freebsd.org/cgi/man.cgi?ministat).
+- We implemented a new data structure for inserting new data points by changing the algorithm to just use realloc without using calloc or memcpy.
+- Replaced the usage of qsort with an_qsort for a faster sorting algorithm for the dataset.
+- Implemented a new option “-v” that emits verbose timing data. This function is used to time the ReadSet function as that is the main function that’s being used in the program where most of the computation was performed.
+- Replaced C library FILE (fopen, fclose, etc.) with faster system calls of open, read, close for ReadSet(). This allowed the reading of a much larger buffer however truncation was to be accounted for where as before the program read byte by byte until a whole double value was read.
+Truncation was addressed by saving the first half of the double and setting a truncation flag to be true. When the next read occurs the truncation flag would be checked and it would append the rest of the value to the previous hence, truncation. 
+- Replaced strtod() with strtod_fast() which was from an open source repository called dtoa-fast. This provided a faster conversion from string to double.
 
-	Usage: ministat [-C column] [-c confidence] [-d delimiter(s)] [-ns] [-w width] [file [file ...]]
-		confidence = {80%, 90%, 95%, 98%, 99%, 99.5%}
-		-C : column number to extract (starts and defaults to 1)
-		-d : delimiter(s) string, default to " \t"
-		-n : print summary statistics only, no graph/test
-		-q : print summary statistics and test only, no graph
-		-s : print avg/median/stddev bars on separate lines
-		-w : width of graph/test output (default 74 or terminal width)
+### 2) Implemented a Multi-thread architecture
 
-## Example
-From the FreeBSD [man page](http://www.freebsd.org/cgi/man.cgi?ministat)
+- Assigned one thread to each file that the ministat function is computing
+- In the ReadSet function, where all the reading of a file took place. More threads were created to split the file into segments for each thread to read concurrently. When splitting the file, truncation is accounted for so some threads might be reading more than others by some number of bytes but all threads are ensured to be reading full double values.
+- Implemented a multithreaded merge sort. The calling function allocates memory for the sorted result data and passes a pointer to it along with the unsorted data into the sort function. The sort function divides the data into 6 threads and calls merge sort on them, updating the data in the memory pointed to by the result pointer. When all threads return, each smaller sorted array is then merged into the final sorted result, and the function returns to the calling function, which has the sorted result.  
 
-	$ cat << EOF > iguana
-	50
-	200
-	150
-	400
-	750
-	400
-	150
-	EOF
+### Performance before Optimization
 
-	$ cat << EOF > chameleon
-	150
-	400
-	720	
-	500
-	930
-	EOF
+### Performance after Optimization
 
-	$ ministat -s -w 60 iguana chameleon
-	x iguana
-	+ chameleon
-	+------------------------------------------------------------+
-	|x      *  x	     *	       +	   + x	            +|
-	| |________M______A_______________|			     |
-	| 	      |________________M__A___________________|      |
-	+------------------------------------------------------------+
-	    N	  Min	     Max     Median	   Avg	     Stddev
-	x   7	   50	     750	200	   300	  238.04761
-	+   5	  150	     930	500	   540	  299.08193
-	No difference proven at 95.0% confidence
