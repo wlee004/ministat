@@ -14,6 +14,7 @@
 ### - Optimized ministat Perf Report
 
 ### - Optimized ministat Flame Graph
+![Flamegraph](https://raw.githubusercontent.com/wlee004/ministat/blob/master/perf-ministat.svg)
 
 ### Strategies for optimization:
 	We did the following to optimize our version of ministat.
