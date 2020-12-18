@@ -5,16 +5,22 @@
 
 ## Optimization of ministat
 ### Goal:
-	The main objective of this project is to optimize ministat to take advantage of modern CPU features and compiler optimizations.
+	The main objective of this project is to optimize ministat to take advantage of modern CPU features
+	and compiler optimizations.
 
 ### - Original ministat Perf Report
+![Original Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Original_perf1.png)
+![Original Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Original_perf2.png)
 
 ### - Original ministat Flame Graph
+![Original Flamegraph](https://github.com/wlee004/ministat/blob/master/screenshots/perf-ministat.svg)
 
 ### - Optimized ministat Perf Report
+![Optimized Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/Optimizedperf1.png)
+![Optimized Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/Optimizedperf2.png)
 
 ### - Optimized ministat Flame Graph
-![Flamegraph](https://raw.githubusercontent.com/wlee004/ministat/blob/master/perf-ministat.svg)
+![Optimized Flamegraph](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/perf-ministat.svg)
 
 ### Strategies for optimization:
 	We did the following to optimize our version of ministat.
@@ -35,6 +41,12 @@ Truncation was addressed by saving the first half of the double and setting a tr
 - Implemented a multithreaded merge sort. The calling function allocates memory for the sorted result data and passes a pointer to it along with the unsorted data into the sort function. The sort function divides the data into 6 threads and calls merge sort on them, updating the data in the memory pointed to by the result pointer. When all threads return, each smaller sorted array is then merged into the final sorted result, and the function returns to the calling function, which has the sorted result.  
 
 ### Performance before Optimization
+![Before Optimization](https://github.com/wlee004/ministat/blob/master/screenshots/OriginalPerformance.png)
+
 
 ### Performance after Optimization
+![After Optimization](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/OptimizedPerformance.png)
+
+### Conclusion
+	.
 
