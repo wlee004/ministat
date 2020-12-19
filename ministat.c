@@ -707,7 +707,6 @@ ReadSet(void * argument)
 		pthread_join(thread[i], NULL);
 	}
 
-
 	s = args[0].s;
 	for(int i = 1; i < numThread; i++){
 		Append(s, args[1].s);
