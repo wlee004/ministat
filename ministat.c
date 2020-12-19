@@ -604,7 +604,6 @@ ReadSet(void * argument)
 	char * n = inputs -> file;
 	float flag_v = inputs -> flag_v; 
 	struct dataset *s;
-	double half_size;
 
 	s = NewSet();
 	//s->name = strdup(n);
@@ -617,23 +616,11 @@ ReadSet(void * argument)
 	struct stat buffer;
     double size;
     int status, f, r;
-    int thread1_readsize, thread2_readsize;
 	char buf[BUFSIZ]; 
 	int extra_read = 0;
-
-	// return the size of file being read in bytes
-    status = stat(n, &buffer);
-		if(status == 0)
-			size = buffer.st_size;
-		else{
-			size = 0;
-		}
-
-	// split bytes to read by n threads 
-	half_size = size / 2;
-	thread1_readsize = floor(half_size);
-	thread2_readsize = ceil(half_size);
-
+	size_t numThread = 4; 
+    //int thread_readsize[numThread];
+	
 	if (n == NULL) {
 		f = STDIN_FILENO;
 		n = "<stdin>";
@@ -645,44 +632,86 @@ ReadSet(void * argument)
 	}
 	if (f == -1)
 		err(1, "Cannot open %s", n);
+/*
+	int seek_start[numThread];
+	seek_start[0] = 0;
+	printf("Curr size: %ld", currSize);
+	for(int i = 0; i < numThread; i++){
+		if(currSize > thread_readsize[i]){
+			lseek(f, seek_start[i] + thread_readsize[i], SEEK_SET);
 
-	lseek(f, thread1_readsize, SEEK_SET);
-
-	// detect truncation from splitting the file
-	r = read(f, buf, 1); // check next byte
-	while(buf[0] != '\n' && buf[0] != '\0' && buf[0] != ' ' && buf[0] != '\t'){
-		r = read(f, buf, 1); // read 1 byte at a time
-		extra_read += r;
+			// detect truncation from splitting the file
+			r = read(f, buf, 1); // check next byte
+			while(buf[0] != '\n' && buf[0] != '\0' && buf[0] != ' ' && buf[0] != '\t'){
+				r = read(f, buf, 1); // read 1 byte at a time
+				extra_read += r;
+			}
+			
+			memset(buf, 0, BUFSIZ);
+			thread_readsize[i] += extra_read + 1;
+		}
+		else{ 
+			thread_readsize[i] = currSize;
+		}
+		seek_start[i + 1] = seek_start[i] + thread_readsize[i];
+		currSize -= thread_readsize[i]; 
 	}
-	
-	memset(buf, 0, BUFSIZ);
-	thread1_readsize += extra_read + 1;
-	thread2_readsize = size - thread1_readsize;  
 	close(f);
+*/
 
-	//multithread read: creates 2 thread per file 
-	size_t THREAD_READ = 2;
-	pthread_t thread[THREAD_READ]; 
-	struct read_arg args[THREAD_READ];
-	for(int i = 0; i < THREAD_READ; i++){
-		if(i == 0){
-			args[i].seek_start = 0;
-			args[i].bytes_to_read = thread1_readsize;
-		}
-		else{
-			args[i].seek_start = thread1_readsize;
-			args[i].bytes_to_read = thread2_readsize;
-		}
+	// return the size of file being read in bytes
+    status = stat(n, &buffer);
+	if(status == 0)
+		size = buffer.st_size;
+	else{
+		size = 0;
+	}
+	double partition_size = floor(size / numThread);
+	pthread_t thread[numThread]; 
+	struct read_arg args[numThread];
+	size_t currByte = 0; 
+
+	// test print for file size
+	printf("File Size: %lf\n", size);
+
+	for(int i = 0; i < numThread; i++){
 		args[i].file = n;
+		args[i].seek_start = currByte;
+
+		if(i < numThread - 1){
+
+			f = open(n, O_RDWR);
+			lseek(f, currByte + partition_size, SEEK_SET);
+			extra_read = 0;
+
+			// detect truncation from splitting the file
+			r = read(f, buf, 1); // check next byte
+			while(buf[0] != '\n' && buf[0] != '\0' && buf[0] != ' ' && buf[0] != '\t'){
+				r = read(f, buf, 1); // read 1 byte at a time
+				extra_read += r;
+			}
+			memset(buf, 0, BUFSIZ);
+			args[i].bytes_to_read = partition_size + extra_read + 1;
+			currByte += args[i].bytes_to_read;
+			printf("extra read: %d\n", extra_read);
+		}
+		else{ 
+			args[i].bytes_to_read = size - currByte;
+		}
+		printf("args[%d].bytes_to_read: %d\n", i, args[i].bytes_to_read);
+		printf("args[%d].seek_start: %d\n", i, args[i].seek_start);
+		close(f);
 		pthread_create(&thread[i], NULL, &read_loop, (void *)&args[i]);
 	}
-	for(int i = 0; i < THREAD_READ; i++){
+	for(int i = 0; i < numThread; i++){
 		pthread_join(thread[i], NULL);
 	}
 
+
 	s = args[0].s;
-	Append(s, args[1].s);
-	//s = args[0].s;
+	for(int i = 1; i < numThread; i++){
+		Append(s, args[1].s);
+	}
 
 	if (s->n < 3) {
 		fprintf(stderr,
