@@ -16,7 +16,7 @@
 ![Original Flamegraph](https://github.com/wlee004/ministat/blob/master/screenshots/perf-ministat.svg)
 
 ### - Optimized ministat Perf Report
-![Optimized Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/Optimizedperf1.png)
+![Optimized Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/Optimized_perf1.png)
 <!--- ![Optimized Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/Optimizedperf2.png)--->
 
 ### - Optimized ministat Flame Graph
