@@ -13,14 +13,14 @@
 <!---![Original Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Original_perf2.png)--->
 
 ### - Original ministat Flame Graph
-![Original Flamegraph](https://github.com/wlee004/ministat/blob/master/screenshots/perf-ministat.svg)
+![Original Flamegraph](https://raw.githubusercontent.com/wlee004/ministat/master/screenshots/perf-ministat.svg)
 
 ### - Optimized ministat Perf Report
 ![Optimized Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/Optimized_perf1.png)
 <!--- ![Optimized Perf Report](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/Optimizedperf2.png)--->
 
 ### - Optimized ministat Flame Graph
-![Optimized Flamegraph](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/perf-ministat.svg)
+![Optimized Flamegraph](https://raw.githubusercontent.com/wlee004/ministat/master/screenshots/Optimized/perf-ministat.svg)
 
 ### Strategies for optimization:
 	We did the following to optimize our version of ministat.
