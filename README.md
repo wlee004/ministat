@@ -48,5 +48,5 @@ Truncation was addressed by saving the first half of the double and setting a tr
 ![After Optimization](https://github.com/wlee004/ministat/blob/master/screenshots/Optimized/OptimizedPerformance.png)
 
 ### Conclusion
-	.
 
+- Challenges that we encountered was getting the multithreading to work on the reading of each file. The current main function is coded to run on only two threads per file. A more dynamic version of multithreading was attempted to run any number of threads per file read however it ran into issues of a thread reading outside the file even when parameters given to the thread seemed to be correct. 
