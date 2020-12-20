@@ -480,7 +480,7 @@ DumpPlot(void)
 	putchar('+');
 	putchar('\n');
 }
-/*
+
 static int
 dbl_cmp(const void *a, const void *b)
 {
@@ -500,7 +500,7 @@ dbl_cmp(const void *a, const void *b)
 #define AN_QSORT_CMP dbl_cmp
 
 #include "an_qsort.inc"
-*/
+
 void * 
 read_loop(void * argument)
 {
@@ -694,8 +694,8 @@ ReadSet(void * argument)
 	  ti[1] = stop.tv_sec - start.tv_sec;
 	}
 
-	//an_qsort_doubles(s->points, s->n);
-	
+	an_qsort_doubles(s->points, s->n);
+	/* attempted multithread sorting but an_qsort is still slightly faster
 	double *sort_result = malloc(sizeof(double) * s->n);
 	if (sort_result == NULL) {
 		fprintf(stderr,
@@ -704,7 +704,7 @@ ReadSet(void * argument)
 	}
 	multithreaded_mergsesort(s->points, s->n, sort_result);
 	s->points = sort_result;
-	
+	*/
 	inputs->s = s;
 	return NULL; 
 }
